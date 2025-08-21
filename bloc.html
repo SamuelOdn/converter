@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Convertisseur de données</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      font-size: clamp(20px, 4vw, 28px);
+      margin-bottom: 10px;
+      text-align: center;
+      color: #38bdf8;
+    }
+    #compteur {
+      margin-bottom: 20px;
+      color: #facc15;
+      font-weight: 500;
+    }
+    textarea {
+      width: 100%;
+      max-width: 800px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #f1f5f9;
+      resize: vertical;
+      min-height: 120px;
+      font-size: 14px;
+    }
+    button {
+      margin-top: 12px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      background: #3b82f6;
+      color: white;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    .results {
+      margin-top: 30px;
+      width: 100%;
+      max-width: 800px;
+      display: grid;
+      gap: 24px;
+    }
+    .card {
+      background: #0f172a;
+      border-left: 3px solid #38bdf8;
+      padding: 10px 16px;
+      white-space: pre-line;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    #copyButton {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Convertisseur de données en blocs</h1>
+  <div id="compteur">Aucun bloc généré</div>
+
+  <textarea
+    id="inputData"
+    placeholder="Collez ici vos données tabulées à 7 colonnes (Nom, Téléphone, Adresse, Produit, Prix unitaire, Quantité, Prix total)"
+  ></textarea>
+  <br />
+  <button onclick="convertir()">Générer les blocs</button>
+  <button id="copyButton" onclick="copierTousLesBlocs()">Copier tous les blocs</button>
+
+  <div class="results" id="results"></div>
+
+  <script>
+    let blocsText = "";
+
+    function convertir() {
+      const input = document.getElementById("inputData").value.trim();
+      const resultsDiv = document.getElementById("results");
+      const compteur = document.getElementById("compteur");
+      const copyBtn = document.getElementById("copyButton");
+
+      resultsDiv.innerHTML = "";
+      blocsText = "";
+      let compteurBlocs = 0;
+
+      if (!input) {
+        compteur.textContent = "Aucun bloc généré";
+        copyBtn.style.display = "none";
+        return;
+      }
+
+      const lignes = input.split("\n");
+
+      lignes.forEach((ligne) => {
+        const parts = ligne.trim().split("\t");
+        if (parts.length !== 7) return;
+
+        const nom = parts[0].trim();
+        const tel = parts[1].trim();
+        const adresse = parts[2].trim();
+        const produit = parts[3].trim();
+        const prixUnitaire = parts[4].trim();
+        const quantite = parseInt(parts[5].trim());
+        const prixTotal = parts[6].trim();
+
+        const produitAffiche = quantite > 1 ? `${produit} x${quantite}` : produit;
+
+        const blocTexte = `${nom}\n${tel}\n${adresse}\n${produitAffiche}\n${prixTotal}`;
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.textContent = blocTexte;
+        resultsDiv.appendChild(card);
+
+        blocsText += blocTexte + "\n\n";
+        compteurBlocs++;
+      });
+
+      if (compteurBlocs > 0) {
+        compteur.textContent = `🔢 ${compteurBlocs} bloc${compteurBlocs > 1 ? "s" : ""} généré${compteurBlocs > 1 ? "s" : ""}`;
+        copyBtn.style.display = "inline-block";
+      } else {
+        compteur.textContent = "Aucun bloc généré";
+        copyBtn.style.display = "none";
+      }
+    }
+
+    function copierTousLesBlocs() {
+      if (!blocsText.trim()) {
+        alert("❗Aucun bloc à copier. Veuillez d'abord générer les blocs.");
+        return;
+      }
+
+      navigator.clipboard.writeText(blocsText.trim())
+        .then(() => {
+          alert("✅ Tous les blocs ont été copiés !");
+        })
+        .catch(err => {
+          alert("❌ Échec de la copie !");
+          console.error(err);
+        });
+    }
+  </script>
+</body>
+</html>
