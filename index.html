@@ -84,11 +84,6 @@
       background: #2563eb;
     }
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
     #copyButton {
       background: #facc15;
       color: #0f172a;
@@ -116,10 +111,6 @@
       font-size: 15px;
       line-height: 1.7;
       overflow-wrap: anywhere;
-    }
-
-    .card strong {
-      color: #38bdf8;
     }
 
     .instructions {
@@ -177,7 +168,24 @@
 
     let blocsText = "";
 
-    // Détecter les lignes et colonnes
+    // AJOUT AUTOMATIQUE DU + DEVANT LE TÉLÉPHONE
+    function formaterTelephone(numero) {
+
+      numero = numero.trim();
+
+      if (!numero) return "";
+
+      // Éviter les doubles signes +
+      if (numero.startsWith("+")) {
+        return numero;
+      }
+
+      // Ajouter le + devant le numéro
+      return "+" + numero;
+
+    }
+
+    // GÉNÉRATION DES BLOCS
     function convertir() {
 
       const input = document.getElementById("inputData").value;
@@ -207,7 +215,6 @@
 
         if (!ligne.trim()) return;
 
-        // Séparation des colonnes tabulées
         let parts = ligne.split("\t").map(p => p.trim());
 
         let noCmd = "";
@@ -220,8 +227,6 @@
         let prixTotal = "";
 
         // FORMAT 7 COLONNES
-        // Nom, Téléphone, Adresse, Produit, Prix unitaire, Quantité, Prix total
-
         if (parts.length === 7) {
 
           [
@@ -237,8 +242,6 @@
         }
 
         // FORMAT 8 COLONNES
-        // No de cmd, Nom, Téléphone, Adresse, Produit, Prix unitaire, Quantité, Prix total
-
         else if (parts.length === 8) {
 
           [
@@ -255,18 +258,20 @@
         }
 
         // FORMAT 9 COLONNES
-        // Même structure avec une colonne vide supplémentaire
-
         else if (parts.length === 9) {
 
-          // La colonne supplémentaire est normalement située
-          // entre Adresse et Produit (index 4).
+          // Suppression de la colonne vide supplémentaire
+          // située entre Adresse et Produit.
 
           if (parts[4] === "") {
+
             parts.splice(4, 1);
+
           } else {
+
             lignesIgnorees++;
             return;
+
           }
 
           [
@@ -289,8 +294,7 @@
 
         }
 
-        // Vérification des informations essentielles
-
+        // VÉRIFICATION DES INFORMATIONS ESSENTIELLES
         if (!nom || !tel || !produit || !prixTotal) {
 
           lignesIgnorees++;
@@ -298,28 +302,35 @@
 
         }
 
-        // Quantité
+        // FORMATAGE DU NUMÉRO DE TÉLÉPHONE
+        const telephoneFormate = formaterTelephone(tel);
+
+        // QUANTITÉ
         const qte = parseInt(quantite, 10) || 1;
 
-        // Affichage du produit et de la quantité
+        // AFFICHAGE DU PRODUIT ET DE LA QUANTITÉ
         const produitAffiche = qte > 1
           ? `${produit} x${qte}`
           : produit;
 
-        // Construction du bloc
+        // CONSTRUCTION DU BLOC
         const blocTexte = [
           noCmd,
           nom,
-          tel,
+          telephoneFormate,
           adresse,
           produitAffiche,
           prixTotal
         ].filter((value, index) => {
-          // Garder les champs vides sauf le numéro de commande
+
+          // Ne pas afficher la ligne du numéro de commande
+          // lorsqu'il est absent.
+
           return index !== 0 || value !== "";
+
         }).join("\n");
 
-        // Création de la carte
+        // CRÉATION DE LA CARTE
         const card = document.createElement("div");
 
         card.className = "card";
@@ -327,15 +338,14 @@
 
         resultsDiv.appendChild(card);
 
-        // Stockage des blocs pour la copie
+        // STOCKAGE DES BLOCS POUR LA COPIE
         blocsText += blocTexte + "\n\n";
 
         compteurBlocs++;
 
       });
 
-      // Mise à jour du compteur
-
+      // MISE À JOUR DU COMPTEUR
       if (compteurBlocs > 0) {
 
         compteur.textContent =
@@ -362,16 +372,15 @@
     }
 
     // MÉTHODE DE COPIE DE SECOURS
-
     function copierAvecFallback(texte) {
 
       const textarea = document.createElement("textarea");
 
       textarea.value = texte;
-
       textarea.style.position = "fixed";
       textarea.style.left = "-9999px";
       textarea.style.top = "0";
+
       textarea.setAttribute("readonly", "");
 
       document.body.appendChild(textarea);
@@ -399,7 +408,6 @@
     }
 
     // COPIER TOUS LES BLOCS
-
     async function copierTousLesBlocs() {
 
       const message = document.getElementById("message");
@@ -436,7 +444,6 @@
 
       } catch (error) {
 
-        // Tentative de secours
         const success = copierAvecFallback(texte);
 
         if (success) {
@@ -458,7 +465,6 @@
     }
 
     // ÉVÉNEMENTS DES BOUTONS
-
     document.getElementById("generateButton")
       .addEventListener("click", convertir);
 
