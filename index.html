@@ -168,24 +168,33 @@
 
     let blocsText = "";
 
-    // AJOUT AUTOMATIQUE DU + DEVANT LE TÉLÉPHONE
+    // VÉRIFIER SI UNE COLONNE CONTIENT UN NUMÉRO DE TÉLÉPHONE
+    function estTelephone(valeur) {
+
+      if (!valeur) return false;
+
+      const numero = valeur.replace(/[\s().-]/g, "");
+
+      return /^\+?\d{8,15}$/.test(numero);
+
+    }
+
+    // AJOUTER AUTOMATIQUEMENT LE SIGNE +
     function formaterTelephone(numero) {
 
       numero = numero.trim();
 
       if (!numero) return "";
 
-      // Éviter les doubles signes +
       if (numero.startsWith("+")) {
         return numero;
       }
 
-      // Ajouter le + devant le numéro
       return "+" + numero;
 
     }
 
-    // GÉNÉRATION DES BLOCS
+    // IDENTIFIER ET CONVERTIR LES DONNÉES
     function convertir() {
 
       const input = document.getElementById("inputData").value;
@@ -205,8 +214,8 @@
 
         compteur.textContent = "Aucun bloc généré";
         copyBtn.style.display = "none";
-
         return;
+
       }
 
       const lignes = input.split(/\r?\n/);
@@ -215,7 +224,7 @@
 
         if (!ligne.trim()) return;
 
-        let parts = ligne.split("\t").map(p => p.trim());
+        const parts = ligne.split("\t").map(p => p.trim());
 
         let noCmd = "";
         let nom = "";
@@ -226,8 +235,13 @@
         let quantite = "";
         let prixTotal = "";
 
-        // FORMAT 7 COLONNES
-        if (parts.length === 7) {
+        // FORMAT A : 7 COLONNES
+        // Nom | Téléphone | Adresse | Produit | Prix unitaire | Quantité | Prix total
+
+        if (
+          parts.length === 7 &&
+          estTelephone(parts[1])
+        ) {
 
           [
             nom,
@@ -241,8 +255,36 @@
 
         }
 
-        // FORMAT 8 COLONNES
-        else if (parts.length === 8) {
+        // FORMAT B : 8 COLONNES
+        // Nom | Téléphone | Adresse | VIDE | Produit | Prix unitaire | Quantité | Prix total
+
+        else if (
+          parts.length === 8 &&
+          estTelephone(parts[1]) &&
+          parts[3] === ""
+        ) {
+
+          parts.splice(3, 1);
+
+          [
+            nom,
+            tel,
+            adresse,
+            produit,
+            prixUnitaire,
+            quantite,
+            prixTotal
+          ] = parts;
+
+        }
+
+        // FORMAT C : 8 COLONNES
+        // N° commande | Nom | Téléphone | Adresse | Produit | Prix unitaire | Quantité | Prix total
+
+        else if (
+          parts.length === 8 &&
+          estTelephone(parts[2])
+        ) {
 
           [
             noCmd,
@@ -257,22 +299,16 @@
 
         }
 
-        // FORMAT 9 COLONNES
-        else if (parts.length === 9) {
+        // FORMAT D : 9 COLONNES
+        // N° commande | Nom | Téléphone | Adresse | VIDE | Produit | Prix unitaire | Quantité | Prix total
 
-          // Suppression de la colonne vide supplémentaire
-          // située entre Adresse et Produit.
+        else if (
+          parts.length === 9 &&
+          estTelephone(parts[2]) &&
+          parts[4] === ""
+        ) {
 
-          if (parts[4] === "") {
-
-            parts.splice(4, 1);
-
-          } else {
-
-            lignesIgnorees++;
-            return;
-
-          }
+          parts.splice(4, 1);
 
           [
             noCmd,
@@ -295,6 +331,7 @@
         }
 
         // VÉRIFICATION DES INFORMATIONS ESSENTIELLES
+
         if (!nom || !tel || !produit || !prixTotal) {
 
           lignesIgnorees++;
@@ -302,35 +339,38 @@
 
         }
 
-        // FORMATAGE DU NUMÉRO DE TÉLÉPHONE
+        // FORMATAGE DU TÉLÉPHONE
+
         const telephoneFormate = formaterTelephone(tel);
 
-        // QUANTITÉ
+        // GESTION DE LA QUANTITÉ
+
         const qte = parseInt(quantite, 10) || 1;
 
-        // AFFICHAGE DU PRODUIT ET DE LA QUANTITÉ
         const produitAffiche = qte > 1
           ? `${produit} x${qte}`
           : produit;
 
         // CONSTRUCTION DU BLOC
-        const blocTexte = [
-          noCmd,
+
+        const elements = [];
+
+        if (noCmd) {
+          elements.push(noCmd);
+        }
+
+        elements.push(
           nom,
           telephoneFormate,
           adresse,
           produitAffiche,
           prixTotal
-        ].filter((value, index) => {
+        );
 
-          // Ne pas afficher la ligne du numéro de commande
-          // lorsqu'il est absent.
+        const blocTexte = elements.join("\n");
 
-          return index !== 0 || value !== "";
+        // AFFICHAGE DU BLOC
 
-        }).join("\n");
-
-        // CRÉATION DE LA CARTE
         const card = document.createElement("div");
 
         card.className = "card";
@@ -338,7 +378,8 @@
 
         resultsDiv.appendChild(card);
 
-        // STOCKAGE DES BLOCS POUR LA COPIE
+        // STOCKAGE POUR LA COPIE
+
         blocsText += blocTexte + "\n\n";
 
         compteurBlocs++;
@@ -346,6 +387,7 @@
       });
 
       // MISE À JOUR DU COMPTEUR
+
       if (compteurBlocs > 0) {
 
         compteur.textContent =
@@ -371,7 +413,7 @@
 
     }
 
-    // MÉTHODE DE COPIE DE SECOURS
+    // COPIE DE SECOURS
     function copierAvecFallback(texte) {
 
       const textarea = document.createElement("textarea");
@@ -380,8 +422,6 @@
       textarea.style.position = "fixed";
       textarea.style.left = "-9999px";
       textarea.style.top = "0";
-
-      textarea.setAttribute("readonly", "");
 
       document.body.appendChild(textarea);
 
@@ -465,6 +505,7 @@
     }
 
     // ÉVÉNEMENTS DES BOUTONS
+
     document.getElementById("generateButton")
       .addEventListener("click", convertir);
 
