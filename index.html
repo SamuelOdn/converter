@@ -1,11 +1,19 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <title>Convertisseur de données</title>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: 'Inter', sans-serif;
@@ -28,7 +36,8 @@
     #compteur {
       margin-bottom: 20px;
       color: #facc15;
-      font-weight: 500;
+      font-weight: 600;
+      text-align: center;
     }
 
     textarea {
@@ -40,12 +49,26 @@
       background: #1e293b;
       color: #f1f5f9;
       resize: vertical;
-      min-height: 120px;
+      min-height: 150px;
       font-size: 14px;
+      line-height: 1.6;
+      font-family: monospace;
+    }
+
+    textarea:focus {
+      outline: 2px solid #38bdf8;
+      border-color: #38bdf8;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 12px;
     }
 
     button {
-      margin-top: 12px;
       padding: 12px 20px;
       border: none;
       border-radius: 10px;
@@ -61,25 +84,59 @@
       background: #2563eb;
     }
 
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #copyButton {
+      background: #facc15;
+      color: #0f172a;
+      display: none;
+    }
+
+    #copyButton:hover {
+      background: #eab308;
+    }
+
     .results {
       margin-top: 30px;
       width: 100%;
       max-width: 800px;
       display: grid;
-      gap: 24px;
+      gap: 16px;
     }
 
     .card {
-      background: #0f172a;
+      background: #1e293b;
       border-left: 3px solid #38bdf8;
-      padding: 10px 16px;
+      border-radius: 8px;
+      padding: 12px 16px;
       white-space: pre-line;
       font-size: 15px;
-      line-height: 1.6;
+      line-height: 1.7;
+      overflow-wrap: anywhere;
     }
 
-    #copyButton {
-      display: none;
+    .card strong {
+      color: #38bdf8;
+    }
+
+    .instructions {
+      max-width: 800px;
+      width: 100%;
+      margin-bottom: 15px;
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-size: 14px;
+      text-align: center;
+      color: #4ade80;
     }
   </style>
 </head>
@@ -90,123 +147,323 @@
 
   <div id="compteur">Aucun bloc généré</div>
 
+  <div class="instructions">
+    Collez vos données Excel ou Google Sheets.
+    Formats acceptés : 7, 8 ou 9 colonnes.
+  </div>
+
   <textarea
     id="inputData"
-    placeholder="Collez ici vos données tabulées à 8 colonnes (No de cmd, Nom, Téléphone, Adresse, Produit, Prix unitaire, Quantité, Prix total)"
+    placeholder="Collez ici vos données tabulées..."
   ></textarea>
 
-  <br />
+  <div class="buttons">
 
-  <button onclick="convertir()">Générer les blocs</button>
+    <button type="button" id="generateButton">
+      Générer les blocs
+    </button>
 
-  <button
-    id="copyButton"
-    style="background-color: #facc15;"
-    onclick="copierTousLesBlocs()"
-  >
-    Copier tous les blocs
-  </button>
+    <button type="button" id="copyButton">
+      Copier tous les blocs
+    </button>
+
+  </div>
+
+  <div id="message" aria-live="polite"></div>
 
   <div class="results" id="results"></div>
 
   <script>
+
     let blocsText = "";
 
-    
+    // Détecter les lignes et colonnes
     function convertir() {
-      const input = document.getElementById("inputData").value.trim();
+
+      const input = document.getElementById("inputData").value;
       const resultsDiv = document.getElementById("results");
       const compteur = document.getElementById("compteur");
       const copyBtn = document.getElementById("copyButton");
-    
+      const message = document.getElementById("message");
+
       resultsDiv.innerHTML = "";
       blocsText = "";
+      message.textContent = "";
+
       let compteurBlocs = 0;
       let lignesIgnorees = 0;
-    
-      if (!input) {
+
+      if (!input.trim()) {
+
         compteur.textContent = "Aucun bloc généré";
         copyBtn.style.display = "none";
+
         return;
       }
-    
+
       const lignes = input.split(/\r?\n/);
-    
+
       lignes.forEach((ligne) => {
+
         if (!ligne.trim()) return;
-    
-        const parts = ligne.split("\t").map(p => p.trim());
-    
+
+        // Séparation des colonnes tabulées
+        let parts = ligne.split("\t").map(p => p.trim());
+
         let noCmd = "";
-        let nom, tel, adresse, produit, prixUnitaire, quantite, prixTotal;
-    
+        let nom = "";
+        let tel = "";
+        let adresse = "";
+        let produit = "";
+        let prixUnitaire = "";
+        let quantite = "";
+        let prixTotal = "";
+
+        // FORMAT 7 COLONNES
+        // Nom, Téléphone, Adresse, Produit, Prix unitaire, Quantité, Prix total
+
         if (parts.length === 7) {
-          // Format 7 colonnes : sans numéro de commande
-          [nom, tel, adresse, produit, prixUnitaire, quantite, prixTotal] = parts;
-    
-        } else if (parts.length === 8) {
-          // Format 8 colonnes : format standard
-          [noCmd, nom, tel, adresse, produit, prixUnitaire, quantite, prixTotal] = parts;
-    
-        } else if (parts.length === 9) {
-          // Format 9 colonnes : suppression de la colonne vide supplémentaire
-          const cleanedParts = parts.filter((p, i) => {
-            // On ignore uniquement la cellule vide supplémentaire
-            return p !== "" || i === 3;
-          });
-    
-          if (cleanedParts.length === 8) {
-            [noCmd, nom, tel, adresse, produit, prixUnitaire, quantite, prixTotal] = cleanedParts;
+
+          [
+            nom,
+            tel,
+            adresse,
+            produit,
+            prixUnitaire,
+            quantite,
+            prixTotal
+          ] = parts;
+
+        }
+
+        // FORMAT 8 COLONNES
+        // No de cmd, Nom, Téléphone, Adresse, Produit, Prix unitaire, Quantité, Prix total
+
+        else if (parts.length === 8) {
+
+          [
+            noCmd,
+            nom,
+            tel,
+            adresse,
+            produit,
+            prixUnitaire,
+            quantite,
+            prixTotal
+          ] = parts;
+
+        }
+
+        // FORMAT 9 COLONNES
+        // Même structure avec une colonne vide supplémentaire
+
+        else if (parts.length === 9) {
+
+          // La colonne supplémentaire est normalement située
+          // entre Adresse et Produit (index 4).
+
+          if (parts[4] === "") {
+            parts.splice(4, 1);
           } else {
             lignesIgnorees++;
             return;
           }
-    
-        } else {
+
+          [
+            noCmd,
+            nom,
+            tel,
+            adresse,
+            produit,
+            prixUnitaire,
+            quantite,
+            prixTotal
+          ] = parts;
+
+        }
+
+        else {
+
           lignesIgnorees++;
           return;
+
         }
-    
-        // Vérification des données essentielles
+
+        // Vérification des informations essentielles
+
         if (!nom || !tel || !produit || !prixTotal) {
+
           lignesIgnorees++;
           return;
+
         }
-    
+
+        // Quantité
         const qte = parseInt(quantite, 10) || 1;
-    
+
+        // Affichage du produit et de la quantité
         const produitAffiche = qte > 1
           ? `${produit} x${qte}`
           : produit;
-    
-        const blocTexte =
-    `${noCmd ? noCmd + "\n" : ""}${nom}
-    ${tel}
-    ${adresse}
-    ${produitAffiche}
-    ${prixTotal}`;
-    
+
+        // Construction du bloc
+        const blocTexte = [
+          noCmd,
+          nom,
+          tel,
+          adresse,
+          produitAffiche,
+          prixTotal
+        ].filter((value, index) => {
+          // Garder les champs vides sauf le numéro de commande
+          return index !== 0 || value !== "";
+        }).join("\n");
+
+        // Création de la carte
         const card = document.createElement("div");
+
         card.className = "card";
         card.textContent = blocTexte;
-    
+
         resultsDiv.appendChild(card);
-    
+
+        // Stockage des blocs pour la copie
         blocsText += blocTexte + "\n\n";
+
         compteurBlocs++;
+
       });
-    
+
+      // Mise à jour du compteur
+
       if (compteurBlocs > 0) {
+
         compteur.textContent =
-          `🔢 ${compteurBlocs} bloc${compteurBlocs > 1 ? "s" : ""} généré${compteurBlocs > 1 ? "s" : ""}` +
-          (lignesIgnorees > 0 ? ` | ${lignesIgnorees} ligne(s) ignorée(s)` : "");
-    
+          `🔢 ${compteurBlocs} bloc${compteurBlocs > 1 ? "s" : ""} généré${compteurBlocs > 1 ? "s" : ""}`;
+
+        if (lignesIgnorees > 0) {
+
+          compteur.textContent +=
+            ` | ${lignesIgnorees} ligne(s) ignorée(s)`;
+
+        }
+
         copyBtn.style.display = "inline-block";
+
       } else {
-        compteur.textContent = "Aucun bloc généré. Vérifiez vos données.";
+
+        compteur.textContent =
+          "Aucun bloc généré. Vérifiez le format des données.";
+
         copyBtn.style.display = "none";
+
       }
+
     }
+
+    // MÉTHODE DE COPIE DE SECOURS
+
+    function copierAvecFallback(texte) {
+
+      const textarea = document.createElement("textarea");
+
+      textarea.value = texte;
+
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.top = "0";
+      textarea.setAttribute("readonly", "");
+
+      document.body.appendChild(textarea);
+
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+
+      let success = false;
+
+      try {
+
+        success = document.execCommand("copy");
+
+      } catch (error) {
+
+        console.error("Erreur de copie :", error);
+
+      }
+
+      document.body.removeChild(textarea);
+
+      return success;
+
+    }
+
+    // COPIER TOUS LES BLOCS
+
+    async function copierTousLesBlocs() {
+
+      const message = document.getElementById("message");
+
+      if (!blocsText.trim()) {
+
+        message.textContent =
+          "❗ Aucun bloc à copier. Générez d'abord les blocs.";
+
+        return;
+
+      }
+
+      const texte = blocsText.trim();
+
+      try {
+
+        if (navigator.clipboard && window.isSecureContext) {
+
+          await navigator.clipboard.writeText(texte);
+
+        } else {
+
+          const success = copierAvecFallback(texte);
+
+          if (!success) {
+            throw new Error("Copie impossible");
+          }
+
+        }
+
+        message.textContent =
+          "✅ Tous les blocs ont été copiés avec succès !";
+
+      } catch (error) {
+
+        // Tentative de secours
+        const success = copierAvecFallback(texte);
+
+        if (success) {
+
+          message.textContent =
+            "✅ Tous les blocs ont été copiés avec succès !";
+
+        } else {
+
+          message.textContent =
+            "❌ Échec de la copie. Vérifiez les autorisations du navigateur.";
+
+          console.error(error);
+
+        }
+
+      }
+
+    }
+
+    // ÉVÉNEMENTS DES BOUTONS
+
+    document.getElementById("generateButton")
+      .addEventListener("click", convertir);
+
+    document.getElementById("copyButton")
+      .addEventListener("click", copierTousLesBlocs);
 
   </script>
 
